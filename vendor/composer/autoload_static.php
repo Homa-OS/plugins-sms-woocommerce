@@ -53,6 +53,7 @@ class ComposerStaticInitb1491eef9abebeef3a826afb3b069082
         'PW\\PWSMS\\Gateways\\HadafWP' => __DIR__ . '/../..' . '/src/Gateways/HadafWP.php',
         'PW\\PWSMS\\Gateways\\HafezPayam' => __DIR__ . '/../..' . '/src/Gateways/HafezPayam.php',
         'PW\\PWSMS\\Gateways\\HiroSMS' => __DIR__ . '/../..' . '/src/Gateways/HiroSMS.php',
+        'PW\\PWSMS\\Gateways\\Homa' => __DIR__ . '/../..' . '/src/Gateways/Homa.php',
         'PW\\PWSMS\\Gateways\\HostIran' => __DIR__ . '/../..' . '/src/Gateways/HostIran.php',
         'PW\\PWSMS\\Gateways\\IRPayamak' => __DIR__ . '/../..' . '/src/Gateways/IRPayamak.php',
         'PW\\PWSMS\\Gateways\\ISMS' => __DIR__ . '/../..' . '/src/Gateways/ISMS.php',

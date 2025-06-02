@@ -1127,6 +1127,20 @@ class Helper {
 		$gateway_obj   = $this->get_sms_gateway();
 		$gateway_class = get_class( $gateway_obj );
 
+		// Enhanced debug information
+		$debug_info = [
+			'timestamp' => current_time( 'Y-m-d H:i:s' ),
+			'gateway_class' => $gateway_class,
+			'gateway_name' => method_exists( $gateway_obj, 'name' ) ? $gateway_obj->name() : 'Unknown',
+			'gateway_id' => method_exists( $gateway_obj, 'id' ) ? $gateway_obj::id() : 'Unknown',
+			'original_mobiles' => $data['mobile'] ?? '',
+			'processed_mobiles' => $mobile,
+			'mobile_count' => count( $mobile ),
+			'message_length' => mb_strlen( $message ),
+			'username' => !empty($gateway_obj->username) ? substr($gateway_obj->username, 0, 3) . '***' : 'Empty',
+			'sender_number' => $gateway_obj->senderNumber ?? 'Not Set',
+		];
+
 		if ( empty( $mobile ) ) {
 			$result = 'شماره موبایل خالی است . ';
 		} elseif ( empty( $message ) ) {
@@ -1142,30 +1156,62 @@ class Helper {
 				$gateway_obj->mobile  = $mobile;
 				$gateway_obj->message = $message;
 
+				// Add timestamp before sending
+				$debug_info['send_start_time'] = microtime( true );
+				
 				$result = $gateway_obj->send( $data );
+				
+				// Add timestamp after sending and calculate duration
+				$debug_info['send_end_time'] = microtime( true );
+				$debug_info['send_duration'] = round( ( $debug_info['send_end_time'] - $debug_info['send_start_time'] ) * 1000, 2 ) . 'ms';
+				
 			} catch ( Exception $e ) {
 				$result = $e->getMessage();
+				$debug_info['exception'] = $e->getMessage();
+				$debug_info['exception_line'] = $e->getLine();
+				$debug_info['exception_file'] = $e->getFile();
 			}
 		}
 
+		// Enhanced result processing for better debugging
 		if ( $result !== true && ! is_string( $result ) ) {
 			ob_start();
-			var_dump( $result );
+			if ( is_array( $result ) || is_object( $result ) ) {
+				print_r( $result );
+			} else {
+				var_dump( $result );
+			}
 			$result = ob_get_clean();
+		}
+
+		// Add result info to debug data
+		$debug_info['result_type'] = gettype( $result );
+		$debug_info['result_is_success'] = $result === true;
+		
+		if ( $result !== true ) {
+			$debug_info['error_details'] = $result;
 		}
 
 		if ( ! empty( $mobile ) && ! empty( $message ) ) {
 
 			$sender = '( ' . $gateway_obj->senderNumber . ' ) ' . $gateway_obj->name();
 
-			Archive::insert_record( [
+			// Enhanced archive record with debug info
+			$archive_data = [
 				'post_id'  => ! empty( $data['post_id'] ) ? $data['post_id'] : '',
 				'type'     => ! empty( $data['type'] ) ? $data['type'] : 0,
 				'reciever' => implode( ',', (array) $mobile ),
 				'message'  => $message,
 				'sender'   => $sender,
 				'result'   => $result === true ? '_ok_' : $result,
-			] );
+			];
+
+			// Log debug info for troubleshooting (only in test/debug mode)
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+				error_log( 'PWSMS Debug Info: ' . wp_json_encode( $debug_info, JSON_UNESCAPED_UNICODE ) );
+			}
+			
+			Archive::insert_record( $archive_data );
 		}
 
 		return $result;

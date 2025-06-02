@@ -38,6 +38,7 @@ return array(
     'PW\\PWSMS\\Gateways\\HadafWP' => $baseDir . '/src/Gateways/HadafWP.php',
     'PW\\PWSMS\\Gateways\\HafezPayam' => $baseDir . '/src/Gateways/HafezPayam.php',
     'PW\\PWSMS\\Gateways\\HiroSMS' => $baseDir . '/src/Gateways/HiroSMS.php',
+    'PW\\PWSMS\\Gateways\\Homa' => $baseDir . '/src/Gateways/Homa.php',
     'PW\\PWSMS\\Gateways\\HostIran' => $baseDir . '/src/Gateways/HostIran.php',
     'PW\\PWSMS\\Gateways\\IRPayamak' => $baseDir . '/src/Gateways/IRPayamak.php',
     'PW\\PWSMS\\Gateways\\ISMS' => $baseDir . '/src/Gateways/ISMS.php',

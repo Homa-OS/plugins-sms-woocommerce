@@ -65,21 +65,84 @@ class Bulk {
 				sanitize_text_field( $_POST['pwoosms_mobile'] ) ) : [];
 			$data['message'] = ! empty( $_POST['pwoosms_message'] ) ? sanitize_textarea_field( $_POST['pwoosms_message'] ) : '';
 
+			// Get gateway information for debugging
+			$gateway_obj = PWSMS()->get_sms_gateway();
+			$gateway_class = get_class( $gateway_obj );
+			$gateway_name = method_exists( $gateway_obj, 'name' ) ? $gateway_obj->name() : 'نامشخص';
+			
+			// Clean and prepare mobile numbers
+			$cleaned_mobiles = PWSMS()->modify_mobile( $mobiles );
+			$cleaned_mobiles = explode( ',', implode( ',', (array) $cleaned_mobiles ) );
+			$cleaned_mobiles = array_map( 'trim', $cleaned_mobiles );
+			$cleaned_mobiles = array_unique( array_filter( $cleaned_mobiles ) );
+
+			// Get current time for debug info
+			$current_time = current_time( 'Y-m-d H:i:s' );
+
 			$response = PWSMS()->send_sms( $data );
 
 			if ( $response === true ) { ?>
 				<div class="notice notice-success below-h2">
-					<p>پیامک با موفقیت ارسال شد.<br><strong>تعداد مخاطبین با حذف شماره های
-							تکراری </strong>=> <?php echo count( $mobiles ) . ' شماره '; ?></p>
+					<p><strong>✅ پیامک با موفقیت ارسال شد!</strong></p>
+					<div style="background: #f0f8ff; padding: 15px; border: 1px solid #0073aa; border-radius: 5px; margin-top: 10px;">
+						<h4 style="margin-top: 0; color: #0073aa;">🔍 جزئیات ارسال:</h4>
+						<ul style="margin: 5px 0;">
+							<li><strong>زمان ارسال:</strong> <?php echo $current_time; ?></li>
+							<li><strong>درگاه پیامک:</strong> <?php echo esc_html( $gateway_name ); ?> (<?php echo esc_html( $gateway_class ); ?>)</li>
+							<li><strong>تعداد شماره‌های ورودی:</strong> <?php echo count( $mobiles ); ?></li>
+							<li><strong>تعداد شماره‌های معتبر (پس از پاکسازی):</strong> <?php echo count( $cleaned_mobiles ); ?></li>
+							<li><strong>شماره‌های دریافت کننده:</strong> 
+								<code style="background: #fff; padding: 2px 5px; border: 1px solid #ddd; direction: ltr; display: inline-block;"><?php echo esc_html( implode( ', ', $cleaned_mobiles ) ); ?></code>
+							</li>
+							<li><strong>طول متن پیامک:</strong> <?php echo mb_strlen( $data['message'] ); ?> کاراکتر</li>
+							<li><strong>پاسخ API:</strong> <span style="color: green; font-weight: bold;">SUCCESS (TRUE)</span></li>
+						</ul>
+					</div>
 				</div>
 				<?php
 				return true;
 			} ?>
 
 			<div class="notice notice-error below-h2">
-				<p><strong>خطا: </strong>پیامک ارسال نشد. پاسخ وبسرویس:
-					<?php echo esc_attr( $response ); ?>
-				</p>
+				<p><strong>❌ خطا: پیامک ارسال نشد!</strong></p>
+				<div style="background: #fff2f2; padding: 15px; border: 1px solid #dc3232; border-radius: 5px; margin-top: 10px;">
+					<h4 style="margin-top: 0; color: #dc3232;">🔍 جزئیات خطا:</h4>
+					<ul style="margin: 5px 0;">
+						<li><strong>زمان تلاش:</strong> <?php echo $current_time; ?></li>
+						<li><strong>درگاه پیامک:</strong> <?php echo esc_html( $gateway_name ); ?> (<?php echo esc_html( $gateway_class ); ?>)</li>
+						<li><strong>تعداد شماره‌های ورودی:</strong> <?php echo count( $mobiles ); ?></li>
+						<li><strong>تعداد شماره‌های معتبر (پس از پاکسازی):</strong> <?php echo count( $cleaned_mobiles ); ?></li>
+						<?php if ( ! empty( $cleaned_mobiles ) ): ?>
+						<li><strong>شماره‌های مقصد:</strong> 
+							<code style="background: #fff; padding: 2px 5px; border: 1px solid #ddd; direction: ltr; display: inline-block;"><?php echo esc_html( implode( ', ', $cleaned_mobiles ) ); ?></code>
+						</li>
+						<?php endif; ?>
+						<li><strong>طول متن پیامک:</strong> <?php echo mb_strlen( $data['message'] ); ?> کاراکتر</li>
+						<li><strong>نوع پاسخ API:</strong> <?php echo gettype( $response ); ?></li>
+						<li><strong>پاسخ کامل وبسرویس:</strong><br>
+							<div style="background: #f9f9f9; padding: 10px; border: 1px solid #ccc; border-radius: 3px; margin-top: 5px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; direction: ltr;">
+								<?php 
+								if ( is_array( $response ) || is_object( $response ) ) {
+									echo '<pre>' . esc_html( print_r( $response, true ) ) . '</pre>';
+								} else {
+									echo esc_html( $response );
+								}
+								?>
+							</div>
+						</li>
+					</ul>
+					
+					<div style="background: #fff8e1; padding: 10px; border: 1px solid #ffc107; border-radius: 3px; margin-top: 10px;">
+						<h5 style="margin: 0 0 5px 0; color: #f57c00;">💡 راهنمای عیب‌یابی:</h5>
+						<ul style="margin: 5px 0; font-size: 12px;">
+							<li>بررسی کنید که اطلاعات وبسرویس (نام کاربری، رمز عبور، شماره فرستنده) صحیح باشد</li>
+							<li>مطمئن شوید که اعتبار پنل پیامک شما کافی است</li>
+							<li>شماره فرستنده باید معتبر و فعال باشد</li>
+							<li>بعضی وبسرویس‌ها محدودیت زمانی برای ارسال دارند</li>
+							<li>متن پیامک نباید حاوی کلمات فیلتر شده باشد</li>
+						</ul>
+					</div>
+				</div>
 			</div>
 			<?php
 		}
