@@ -82,18 +82,57 @@ class Homa implements GatewayInterface {
                 continue;
             }
 
-            // Check if response is numeric and positive (success condition for Homa API)
-            if ( is_numeric( $response_body ) && absint( $response_body ) >= 30 ) {
+            // NEW: Handle JSON+HTML response format
+            $is_success = false;
+            $parsed_response = null;
+            $delivery_code = null;
+            
+            // Try to extract JSON from response (could be JSON + HTML)
+            if ( preg_match('/\{[^}]*"status"[^}]*\}/', $response_body, $json_matches) ) {
+                $json_response = $json_matches[0];
+                $parsed_response = json_decode( $json_response, true );
+                
+                if ( $parsed_response && isset( $parsed_response['deliveryCode'] ) ) {
+                    $delivery_code = $parsed_response['deliveryCode'];
+                    // Success if deliveryCode > 1000 as per user specification
+                    $is_success = absint( $delivery_code ) > 1000;
+                } elseif ( $parsed_response && isset( $parsed_response['status'] ) && $parsed_response['status'] === 'success' ) {
+                    $is_success = true;
+                }
+            }
+            
+            // Fallback: Check if response is numeric and positive (old API format)
+            if ( !$is_success && is_numeric( $response_body ) && absint( $response_body ) >= 30 ) {
+                $is_success = true;
+                $delivery_code = $response_body;
+            }
+
+            if ( $is_success ) {
                 $successes[] = [
                     'mobile' => $mobile,
                     'response' => $response_body,
+                    'delivery_code' => $delivery_code,
+                    'parsed_json' => $parsed_response,
                     'message' => 'ارسال موفق'
                 ];
             } else {
+                // Determine error message
+                $error_message = 'خطای نامشخص';
+                
+                if ( $parsed_response && isset( $parsed_response['message'] ) ) {
+                    $error_message = $parsed_response['message'];
+                } elseif ( is_numeric( $response_body ) ) {
+                    $error_message = $this->get_error_message( $response_body );
+                } else {
+                    $error_message = "پاسخ نامعتبر از سرور";
+                }
+                
                 $errors[] = [
                     'mobile' => $mobile,
-                    'error' => $this->get_error_message( $response_body ),
+                    'error' => $error_message,
                     'response_code' => $response_body,
+                    'delivery_code' => $delivery_code,
+                    'parsed_json' => $parsed_response,
                     'type' => 'api_error'
                 ];
             }
